@@ -25,8 +25,9 @@ import android.view.MotionEvent;
 public class ModelViewerView extends GLSurfaceView implements GestureDetector.OnGestureListener
 {
 	// メンバー変数
-	private OpenGLPickRenderer m_renderer;
-	private GestureDetector    m_gesturedetector;    // 長押し用
+	private ModelViewerRenderer               m_renderer;
+	private GestureDetector                   m_gesturedetector;    // 長押し用
+	public  OpenGLTrackRenderer.ETrackingMode m_eTrackingMode_1fingerdrag;    // １本指ドラッグで行うトラッキングモード
 
 	// コンストラクタ
 	public ModelViewerView( Context context, AttributeSet attrs )
@@ -34,7 +35,7 @@ public class ModelViewerView extends GLSurfaceView implements GestureDetector.On
 		super( context, attrs );
 
 		// Rendererの作成
-		m_renderer = new OpenGLPickRenderer();
+		m_renderer = new ModelViewerRenderer();
 
 		// GLSurfaceViewにRendererをセット
 		setRenderer( m_renderer );
@@ -51,6 +52,14 @@ public class ModelViewerView extends GLSurfaceView implements GestureDetector.On
 		// GestureDetectorの作成
 		m_gesturedetector = new GestureDetector( context, this );
 
+		// １本指ドラッグで行うトラッキングモード
+		m_eTrackingMode_1fingerdrag = OpenGLTrackRenderer.ETrackingMode.TM_ROTATE;
+	}
+
+	// アクセサ
+	public ModelViewerRenderer getRenderer()
+	{
+		return m_renderer;
 	}
 
 	@Override
@@ -75,22 +84,14 @@ public class ModelViewerView extends GLSurfaceView implements GestureDetector.On
 				if( 1 == pointcount )
 				{ // １つの指でドラッグ
 					// １本指ドラッグで行うトラッキングモードを指定する
-					m_renderer.beginTracking( fX, fY, OpenGLTrackRenderer.ETrackingMode.TM_ROTATE );
+					m_renderer.beginTracking( fX, fY, m_eTrackingMode_1fingerdrag );
 				}
 				else if( 2 == pointcount )
 				{ // ２つの指でドラッグ
-					// ２つの指が遠いときは、ズーム、近い時は、パン
 					float       fX1       = event.getX( 1 );
 					float       fY1       = event.getY( 1 );
 					final float fDistance = (float)Math.sqrt( ( fX1 - fX ) * ( fX1 - fX ) + ( fY1 - fY ) * ( fY1 - fY ) );
-					if( 300 < fDistance )
-					{ // ズーム
-						m_renderer.beginTracking( -fDistance, -fDistance, OpenGLTrackRenderer.ETrackingMode.TM_ZOOM );
-					}
-					else
-					{ // パン
-						m_renderer.beginTracking( fX, fY, OpenGLTrackRenderer.ETrackingMode.TM_PAN );
-					}
+					m_renderer.beginTracking( -fDistance, -fDistance, OpenGLTrackRenderer.ETrackingMode.TM_ZOOM );
 				}
 				break;
 			// トラッキングの終了
