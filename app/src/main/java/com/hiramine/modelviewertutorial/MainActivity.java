@@ -22,7 +22,7 @@ import android.os.Bundle;
 public class MainActivity extends AppCompatActivity
 {
 	// メンバー変数
-	private GLSurfaceView m_glsurfaceview;
+	private ModelViewerView m_modelviewerview;
 
 	@Override
 	protected void onCreate( Bundle savedInstanceState )
@@ -31,13 +31,7 @@ public class MainActivity extends AppCompatActivity
 		setContentView( R.layout.activity_main );
 
 		// GLSurfaceViewの取得
-		m_glsurfaceview = (GLSurfaceView)findViewById( R.id.glview );
-
-		// Rendererの作成と、GLSurfaceViewへのセット
-		m_glsurfaceview.setRenderer( new OpenGLBaseRenderer() );
-
-		// 絶え間ないレンダリングではなく都度のレンダリング（setRenderer()よりも後に呼び出す必要あり）
-		m_glsurfaceview.setRenderMode( GLSurfaceView.RENDERMODE_WHEN_DIRTY );
+		m_modelviewerview = (ModelViewerView)findViewById( R.id.glview );
 	}
 
 	// 初回表示時、および、ポーズからの復帰時
@@ -46,14 +40,14 @@ public class MainActivity extends AppCompatActivity
 	{
 		super.onResume();
 
-		m_glsurfaceview.onResume();
+		m_modelviewerview.onResume();
 	}
 
 	// 別のアクティビティ（か別のアプリ）に移行したことで、バックグラウンドに追いやられた時
 	@Override
 	protected void onPause()
 	{
-		m_glsurfaceview.onPause();
+		m_modelviewerview.onPause();
 
 		super.onPause();
 	}
