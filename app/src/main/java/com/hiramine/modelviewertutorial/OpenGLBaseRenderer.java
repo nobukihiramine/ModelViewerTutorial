@@ -284,4 +284,9 @@ public class OpenGLBaseRenderer implements GLSurfaceView.Renderer
 		m_gl.glDisableClientState( GL10.GL_VERTEX_ARRAY );
 		m_gl.glDisableClientState( GL10.GL_COLOR_ARRAY );
 	}
+
+	// サーフェースがが破棄されようとする時
+	public void preSurfaceDestroy()
+	{
+	}
 }

@@ -235,4 +235,22 @@ public class ModelViewerView extends GLSurfaceView implements GestureDetector.On
 		m_renderer.setModel( model );
 		requestRender(); // 再描画
 	}
+
+	// OpenGL描画コンテキストの消失と再作成の対応。
+	// OpenGL描画コンテキストが消失されようとするときには、破棄処理を実施する。レンダラクラスのpreSurfaceDestroy()で実施。
+	// OpenGL描画コンテキストが再作成されたときには、構築処理を実施する。レンダラクラスのonSurfaceCreated()で実施。
+	@Override
+	public void onPause()
+	{
+		// OpenGL関数呼び出しがあるので、イベントキューイングする。
+		queueEvent( new Runnable()
+		{
+			public void run()
+			{
+				m_renderer.preSurfaceDestroy();
+			}
+		} );
+
+		super.onPause();
+	}
 }
