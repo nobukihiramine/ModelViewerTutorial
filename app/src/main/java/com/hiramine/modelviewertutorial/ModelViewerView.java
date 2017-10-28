@@ -20,6 +20,7 @@ import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
+import android.widget.Toast;
 
 
 public class ModelViewerView extends GLSurfaceView implements GestureDetector.OnGestureListener
@@ -47,7 +48,7 @@ public class ModelViewerView extends GLSurfaceView implements GestureDetector.On
 		setRenderMode( GLSurfaceView.RENDERMODE_WHEN_DIRTY );
 
 		// モデルの作成および登録
-		m_renderer.setModel( makeModel() );
+		//m_renderer.setModel( makeModel() );
 
 		// GestureDetectorの作成
 		m_gesturedetector = new GestureDetector( context, this );
@@ -122,7 +123,7 @@ public class ModelViewerView extends GLSurfaceView implements GestureDetector.On
 	}
 
 	// モデル作成
-	private Model makeModel()
+/*	private Model makeModel()
 	{
 		float[] afVertex = {
 				-5.0f, -5.0f, -5.0f,
@@ -174,7 +175,7 @@ public class ModelViewerView extends GLSurfaceView implements GestureDetector.On
 				-5.0f, -5.0f, -5.0f };
 
 		return new Model( afVertex );
-	}
+	}*/
 
 	@Override
 	public boolean onDown( MotionEvent e )
@@ -221,5 +222,17 @@ public class ModelViewerView extends GLSurfaceView implements GestureDetector.On
 	public boolean onFling( MotionEvent e1, MotionEvent e2, float velocityX, float velocityY )
 	{
 		return false;
+	}
+
+	public void loadModelFile( String strPath )
+	{
+		Model model = StlFileLoader.load( strPath );
+		if( null == model )
+		{
+			Toast.makeText( getContext(), "Failed to load file : " + strPath, Toast.LENGTH_SHORT ).show();
+			return;
+		}
+		m_renderer.setModel( model );
+		requestRender(); // 再描画
 	}
 }

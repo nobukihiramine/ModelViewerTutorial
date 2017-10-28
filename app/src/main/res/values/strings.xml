@@ -12,4 +12,5 @@
     <string name="point">Point</string>
     <string name="line">Line</string>
     <string name="face">Face</string>
+    <string name="file_open">File Open...</string>
 </resources>
