@@ -24,7 +24,7 @@ import android.view.MotionEvent;
 public class ModelViewerView extends GLSurfaceView
 {
 	// メンバー変数
-	private OpenGLTrackRenderer m_renderer;
+	private OpenGLModelRenderer m_renderer;
 
 	// コンストラクタ
 	public ModelViewerView( Context context, AttributeSet attrs )
@@ -32,13 +32,19 @@ public class ModelViewerView extends GLSurfaceView
 		super( context, attrs );
 
 		// Rendererの作成
-		m_renderer = new OpenGLTrackRenderer();
+		m_renderer = new OpenGLModelRenderer();
 
 		// GLSurfaceViewにRendererをセット
 		setRenderer( m_renderer );
 
 		// 絶え間ないレンダリングではなく都度のレンダリング（setRenderer()よりも後に呼び出す必要あり）
 		setRenderMode( GLSurfaceView.RENDERMODE_WHEN_DIRTY );
+
+		// 絶え間ないレンダリングではなく都度のレンダリング（setRenderer()よりも後に呼び出す必要あり）
+		setRenderMode( GLSurfaceView.RENDERMODE_WHEN_DIRTY );
+
+		// モデルの作成および登録
+		m_renderer.setModel( makeModel() );
 	}
 
 	@Override
@@ -100,5 +106,60 @@ public class ModelViewerView extends GLSurfaceView
 		}
 
 		return true;
+	}
+
+	// モデル作成
+	private Model makeModel()
+	{
+		float[] afVertex = {
+				-5.0f, -5.0f, -5.0f,
+				5.0f, -5.0f, -5.0f,
+				-5.0f, 5.0f, -5.0f,
+
+				5.0f, -5.0f, -5.0f,
+				5.0f, 5.0f, -5.0f,
+				-5.0f, 5.0f, -5.0f,
+
+				5.0f, -5.0f, -5.0f,
+				5.0f, -5.0f, 5.0f,
+				5.0f, 5.0f, -5.0f,
+
+				5.0f, -5.0f, 5.0f,
+				5.0f, 5.0f, 5.0f,
+				5.0f, 5.0f, -5.0f,
+
+				5.0f, -5.0f, 5.0f,
+				-5.0f, -5.0f, 5.0f,
+				5.0f, 5.0f, 5.0f,
+
+				-5.0f, -5.0f, 5.0f,
+				-5.0f, 5.0f, 5.0f,
+				5.0f, 5.0f, 5.0f,
+
+				-5.0f, -5.0f, 5.0f,
+				-5.0f, -5.0f, -5.0f,
+				-5.0f, 5.0f, 5.0f,
+
+				-5.0f, -5.0f, -5.0f,
+				-5.0f, 5.0f, -5.0f,
+				-5.0f, 5.0f, 5.0f,
+
+				-5.0f, 5.0f, -5.0f,
+				5.0f, 5.0f, -5.0f,
+				-5.0f, 5.0f, 5.0f,
+
+				5.0f, 5.0f, -5.0f,
+				5.0f, 5.0f, 5.0f,
+				-5.0f, 5.0f, 5.0f,
+
+				-5.0f, -5.0f, 5.0f,
+				5.0f, -5.0f, 5.0f,
+				-5.0f, -5.0f, -5.0f,
+
+				5.0f, -5.0f, 5.0f,
+				5.0f, -5.0f, -5.0f,
+				-5.0f, -5.0f, -5.0f };
+
+		return new Model( afVertex );
 	}
 }
