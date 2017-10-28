@@ -51,4 +51,7 @@
                 android:title="@string/face"/>
         </menu>
     </item>
+    <item
+        android:id="@+id/menuitem_file_open"
+        android:title="@string/file_open"/>
 </menu>
