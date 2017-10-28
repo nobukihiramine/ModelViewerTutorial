@@ -18,13 +18,15 @@ package com.hiramine.modelviewertutorial;
 import android.content.Context;
 import android.opengl.GLSurfaceView;
 import android.util.AttributeSet;
+import android.view.GestureDetector;
 import android.view.MotionEvent;
 
 
-public class ModelViewerView extends GLSurfaceView
+public class ModelViewerView extends GLSurfaceView implements GestureDetector.OnGestureListener
 {
 	// メンバー変数
-	private OpenGLModelRenderer m_renderer;
+	private OpenGLPickRenderer m_renderer;
+	private GestureDetector    m_gesturedetector;    // 長押し用
 
 	// コンストラクタ
 	public ModelViewerView( Context context, AttributeSet attrs )
@@ -32,7 +34,7 @@ public class ModelViewerView extends GLSurfaceView
 		super( context, attrs );
 
 		// Rendererの作成
-		m_renderer = new OpenGLModelRenderer();
+		m_renderer = new OpenGLPickRenderer();
 
 		// GLSurfaceViewにRendererをセット
 		setRenderer( m_renderer );
@@ -45,11 +47,21 @@ public class ModelViewerView extends GLSurfaceView
 
 		// モデルの作成および登録
 		m_renderer.setModel( makeModel() );
+
+		// GestureDetectorの作成
+		m_gesturedetector = new GestureDetector( context, this );
+
 	}
 
 	@Override
 	public boolean onTouchEvent( MotionEvent event )
 	{
+		// ジェスチャ処理
+		if( m_gesturedetector.onTouchEvent( event ) )
+		{
+			return true;
+		}
+
 		int         action     = event.getAction();
 		int         pointcount = event.getPointerCount();
 		final float fX         = event.getX();
@@ -161,5 +173,52 @@ public class ModelViewerView extends GLSurfaceView
 				-5.0f, -5.0f, -5.0f };
 
 		return new Model( afVertex );
+	}
+
+	@Override
+	public boolean onDown( MotionEvent e )
+	{
+		return false;
+	}
+
+	@Override
+	public void onShowPress( MotionEvent e )
+	{
+
+	}
+
+	@Override
+	public boolean onSingleTapUp( MotionEvent e )
+	{
+		return false;
+	}
+
+	@Override
+	public boolean onScroll( MotionEvent e1, MotionEvent e2, float distanceX, float distanceY )
+	{
+		return false;
+	}
+
+	@Override
+	public void onLongPress( MotionEvent e )
+	{
+		final float fX = e.getX();
+		final float fY = e.getY();
+		queueEvent( new Runnable()
+		{
+			public void run()
+			{
+				if( m_renderer.doPicking( fX, fY ) )
+				{
+					requestRender(); // 再描画
+				}
+			}
+		} );
+	}
+
+	@Override
+	public boolean onFling( MotionEvent e1, MotionEvent e2, float velocityX, float velocityY )
+	{
+		return false;
 	}
 }
