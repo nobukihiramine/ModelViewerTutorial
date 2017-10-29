@@ -39,6 +39,7 @@ public class MainActivity extends AppCompatActivity
 	// メンバー変数
 	private ModelViewerView m_modelviewerview;
 	private String m_strInitialDir = Environment.getExternalStorageDirectory().getPath();    // 初期フォルダ
+	ModelFileLoadTask m_modelfileloadtask;
 
 	@Override
 	protected void onCreate( Bundle savedInstanceState )
@@ -170,7 +171,8 @@ public class MainActivity extends AppCompatActivity
 			if( null != extras )
 			{
 				File file = (File)extras.getSerializable( FileSelectionActivity.EXTRA_FILE );
-				m_modelviewerview.loadModelFile( file.getPath() );
+				m_modelfileloadtask = new ModelFileLoadTask( this, m_modelviewerview, file.getPath() );
+				m_modelfileloadtask.execute();
 				m_strInitialDir = file.getParent();
 			}
 		}

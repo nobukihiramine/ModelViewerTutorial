@@ -20,11 +20,12 @@ import com.hiramine.modelfileloader.MFLIndexedTriangle;
 import com.hiramine.modelfileloader.MFLMaterial;
 import com.hiramine.modelfileloader.MFLModel;
 import com.hiramine.modelfileloader.ObjFileLoader;
+import com.hiramine.modelfileloader.OnProgressListener;
 import com.hiramine.modelfileloader.StlFileLoader;
 
 public class ModelFileLoader
 {
-	public static Model load( String strPath )
+	public static Model load( String strPath, OnProgressListener onProgressListener )
 	{
 		MFLModel mflmodel = null;
 
@@ -32,11 +33,11 @@ public class ModelFileLoader
 		String strPath_lowercase = strPath.toLowerCase();
 		if( strPath_lowercase.endsWith( ".stl" ) )
 		{
-			mflmodel = StlFileLoader.load( strPath, null );
+			mflmodel = StlFileLoader.load( strPath, onProgressListener );
 		}
 		else if( strPath_lowercase.endsWith( ".obj" ) )
 		{
-			mflmodel = ObjFileLoader.load( strPath, null );
+			mflmodel = ObjFileLoader.load( strPath, onProgressListener );
 		}
 
 		// MFLModel => Model 変換
