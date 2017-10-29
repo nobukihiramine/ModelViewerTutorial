@@ -48,10 +48,10 @@ public class ModelViewerRenderer extends OpenGLLightRenderer
 	private FloatBuffer m_fbVertexMessageTexture;
 	private FloatBuffer m_fbTextureMessageTexture;
 	private int[] m_aiVBOidIdColor = new int[2];        // VBO ID
-	private FloatBuffer m_fbAmbient;
+	/*private FloatBuffer m_fbAmbient;
 	private FloatBuffer m_fbDiffuse;
 	private FloatBuffer m_fbSpecular;
-	private float       m_fShininess;
+	private float       m_fShininess;*/
 
 	// コンストラクタ
 	public ModelViewerRenderer()
@@ -77,13 +77,13 @@ public class ModelViewerRenderer extends OpenGLLightRenderer
 		m_fbTextureMessageTexture = makeFloatBuffer( f4TextureCoord );
 
 		// マテリアル設定
-		float[] f4Ambient = { 0.25f, 0.20725f, 0.20725f, 1.0f };
+		/*float[] f4Ambient = { 0.25f, 0.20725f, 0.20725f, 1.0f };
 		m_fbAmbient = OpenGLBaseRenderer.makeFloatBuffer( f4Ambient );
 		float[] f4Diffuse = { 1.0f, 0.829f, 0.829f, 1.0f };
 		m_fbDiffuse = OpenGLBaseRenderer.makeFloatBuffer( f4Diffuse );
 		float[] f4Specular = { 0.296648f, 0.296648f, 0.296648f, 1.0f };
 		m_fbSpecular = OpenGLBaseRenderer.makeFloatBuffer( f4Specular );
-		m_fShininess = 0.088f;
+		m_fShininess = 0.088f;*/
 	}
 
 	// アクセサ
@@ -101,8 +101,7 @@ public class ModelViewerRenderer extends OpenGLLightRenderer
 	protected void renderModel( ERenderMode eRenderMode )
 	{
 		Model model = getModel();
-		if( null == model
-			|| null == model.getVertexBuffer() )
+		if( null == model )
 		{
 			return;
 		}
@@ -118,140 +117,223 @@ public class ModelViewerRenderer extends OpenGLLightRenderer
 		// 頂点配列の有効化
 		gl.glEnableClientState( GL10.GL_VERTEX_ARRAY );
 
-		if( 0 != model.getVBOidVertex() )
-		{ // Use VBO
-			// 頂点配列の指定
-			gl11.glBindBuffer( GL11.GL_ARRAY_BUFFER, model.getVBOidVertex() );
-			gl11.glVertexPointer( 3, GL10.GL_FLOAT, 0, 0 );
-		}
-		else
+		byte[] abtRGB_groupid = { 0, 0, 0 };
+		for( int iIndexGroup = 0; iIndexGroup < model.getGroupCount(); ++iIndexGroup )
 		{
-			// 頂点配列の指定
-			gl.glVertexPointer( 3, GL10.GL_FLOAT, 0, model.getVertexBuffer() );
-		}
+			Group group = model.getGroup( iIndexGroup );
 
-		// 面の描画
-		if( m_bRenderFace
-			&& null != model.getTriangleVertexIndexBuffer() )
-		{
-			if( ERenderMode.RM_PICK_ELEMENTID == eRenderMode )
+			if( null == group
+				|| null == group.getVertexBuffer() )
 			{
-				gl.glEnableClientState( GL10.GL_COLOR_ARRAY );
-				if( 0 != getVBOidTriangleIdColor() )
+				continue;
+			}
+
+			if( ERenderMode.RM_PICK_GROUPID == eRenderMode )
+			{
+				index2rgb( iIndexGroup, abtRGB_groupid );
+				gl11.glColor4ub( abtRGB_groupid[0], abtRGB_groupid[1], abtRGB_groupid[2], (byte)255 );
+			}
+
+			if( 0 != group.getVBOidVertex() )
+			{ // Use VBO
+				// 頂点配列の指定
+				gl11.glBindBuffer( GL11.GL_ARRAY_BUFFER, group.getVBOidVertex() );
+				gl11.glVertexPointer( 3, GL10.GL_FLOAT, 0, 0 );
+			}
+			else
+			{
+				// 頂点配列の指定
+				gl.glVertexPointer( 3, GL10.GL_FLOAT, 0, group.getVertexBuffer() );
+			}
+
+			// 面の描画
+			if( m_bRenderFace
+				&& null != group.getTriangleVertexIndexBuffer() )
+			{
+				if( ERenderMode.RM_PICK_ELEMENTID == eRenderMode )
+				{
+					gl.glEnableClientState( GL10.GL_COLOR_ARRAY );
+					if( 0 != getVBOidTriangleIdColor() )
+					{ // Use VBO
+						// 色配列の指定
+						gl11.glBindBuffer( GL11.GL_ARRAY_BUFFER, getVBOidTriangleIdColor() );
+						gl11.glColorPointer( 4, // Must be 4.
+											 GL10.GL_UNSIGNED_BYTE,
+											 0,
+											 0 );
+					}
+					else
+					{
+						// 色配列の指定
+						gl.glColorPointer( 4, // Must be 4.
+										   GL10.GL_UNSIGNED_BYTE,
+										   0,
+										   getTriangleIdColorBuffer() );
+					}
+				}
+				else if( ERenderMode.RM_PICK_ELEMENTTYPE == eRenderMode )
+				{
+					gl.glColor4f( 1.0f, 0.0f, 0.0f, 1.0f );
+				}
+				else if( ERenderMode.RM_PICK_GROUPID == eRenderMode )
+				{
+					// 色はグループループの先頭で設定
+				}
+				else
+				{
+					gl.glEnableClientState( GL10.GL_NORMAL_ARRAY );
+					if( 0 != group.getVBOidNormal() )
+					{ // Use VBO
+						// 法線ベクトル配列の指定
+						gl11.glBindBuffer( GL11.GL_ARRAY_BUFFER, group.getVBOidNormal() );
+						gl11.glNormalPointer( GL10.GL_FLOAT, 0, 0 );
+					}
+					else
+					{
+						// 法線ベクトル配列の指定
+						gl.glNormalPointer( GL10.GL_FLOAT, 0, group.getNormalBuffer() );
+					}
+					gl.glEnable( GL10.GL_LIGHTING ); // 光源の効果を有効にする。
+					gl.glEnable( GL10.GL_NORMALIZE ); // OpenGL側で法線ベクトルを単位法線ベクトル化するようにする
+					gl.glLightModelx( GL10.GL_LIGHT_MODEL_TWO_SIDE, 1 );// 面の表と裏に光があたるようにする
+					//gl.glEnable( GL10.GL_COLOR_MATERIAL );// 色設定をマテリアル設定として使用するようにする
+					//gl.glColor4f( 0.5f, 0.5f, 0.0f, 1.0f );
+					/*gl.glMaterialfv( GL10.GL_FRONT_AND_BACK, GL10.GL_AMBIENT, m_fbAmbient );
+					gl.glMaterialfv( GL10.GL_FRONT_AND_BACK, GL10.GL_DIFFUSE, m_fbDiffuse );
+					gl.glMaterialfv( GL10.GL_FRONT_AND_BACK, GL10.GL_SPECULAR, m_fbSpecular );
+					gl.glMaterialf( GL10.GL_FRONT_AND_BACK, GL10.GL_SHININESS, m_fShininess );*/
+					gl.glMaterialfv( GL10.GL_FRONT_AND_BACK, GL10.GL_AMBIENT, group.getMaterial().getAmbientBuffer() );
+					gl.glMaterialfv( GL10.GL_FRONT_AND_BACK, GL10.GL_DIFFUSE, group.getMaterial().getDiffuseBuffer() );
+					gl.glMaterialfv( GL10.GL_FRONT_AND_BACK, GL10.GL_SPECULAR, group.getMaterial().getSpecularBuffer() );
+					gl.glMaterialf( GL10.GL_FRONT_AND_BACK, GL10.GL_SHININESS, group.getMaterial().getShininess() );
+				}
+				if( 0 != group.getVBOidTriangleVertexIndex() )
 				{ // Use VBO
-					// 色配列の指定
-					gl11.glBindBuffer( GL11.GL_ARRAY_BUFFER, getVBOidTriangleIdColor() );
-					gl11.glColorPointer( 4, // Must be 4.
-										 GL10.GL_UNSIGNED_BYTE,
-										 0,
+					gl11.glBindBuffer( GL11.GL_ELEMENT_ARRAY_BUFFER, group.getVBOidTriangleVertexIndex() );
+					gl11.glDrawElements( GL10.GL_TRIANGLES,
+										 group.getTriangleVertexIndexBuffer().capacity(),
+										 GL10.GL_UNSIGNED_SHORT,
 										 0 );
 				}
 				else
 				{
-					// 色配列の指定
-					gl.glColorPointer( 4, // Must be 4.
-									   GL10.GL_UNSIGNED_BYTE,
-									   0,
-									   getTriangleIdColorBuffer() );
+					gl.glDrawElements( GL10.GL_TRIANGLES,
+									   group.getTriangleVertexIndexBuffer().capacity(),
+									   GL10.GL_UNSIGNED_SHORT,
+									   group.getTriangleVertexIndexBuffer().position( 0 ) );
+				}
+				gl.glDisable( GL10.GL_LIGHTING ); // 光源の効果を無効にする。
+				gl.glDisableClientState( GL10.GL_COLOR_ARRAY );
+				gl.glDisableClientState( GL10.GL_NORMAL_ARRAY ); // 法線ベクトル配列の無効化
+				// ピック面の描画
+				if( ERenderMode.RM_RENDER == eRenderMode )
+				{
+					if( iIndexGroup == m_aiName[0]
+						&& ERenderElementType.RET_FACE.getValue() == m_aiName[1] )
+					{
+						int iIndexTriangle = m_aiName[2];
+						gl.glColor4f( 1.0f, 1.0f, 0.0f, 1.0f );
+						if( 0 != group.getVBOidTriangleVertexIndex() )
+						{ // Use VBO
+							gl11.glBindBuffer( GL11.GL_ELEMENT_ARRAY_BUFFER, group.getVBOidTriangleVertexIndex() );
+							gl11.glDrawElements( GL10.GL_TRIANGLES,
+												 3,
+												 GL10.GL_UNSIGNED_SHORT,
+												 3 * iIndexTriangle * SIZEOF_SHORT );
+						}
+						else
+						{
+							gl.glDrawElements( GL10.GL_TRIANGLES,
+											   3,
+											   GL10.GL_UNSIGNED_SHORT,
+											   group.getTriangleVertexIndexBuffer().position( 3 * iIndexTriangle ) );
+						}
+					}
 				}
 			}
-			else if( ERenderMode.RM_PICK_ELEMENTTYPE == eRenderMode )
+
+			// 線の描画
+			if( m_bRenderLine
+				&& null != group.getEdgeVertexIndexBuffer() )
 			{
-				gl.glColor4f( 1.0f, 0.0f, 0.0f, 1.0f );
-			}
-			else
-			{
-				gl.glEnableClientState( GL10.GL_NORMAL_ARRAY );
-				if( 0 != model.getVBOidNormal() )
-				{ // Use VBO
-					// 法線ベクトル配列の指定
-					gl11.glBindBuffer( GL11.GL_ARRAY_BUFFER, model.getVBOidNormal() );
-					gl11.glNormalPointer( GL10.GL_FLOAT, 0, 0 );
+				gl.glLineWidth( 2.0f );
+				if( ERenderMode.RM_PICK_ELEMENTID == eRenderMode )
+				{
+					int    iCountTriangle = group.getTriangleCount();
+					int    iIndexTriangle;
+					int    i3;
+					int    iIndexEdge;
+					byte[] abtRGB         = { 0, 0, 0 };
+					if( 0 != group.getVBOidEdgeVertexIndex() )
+					{ // Use VBO
+						gl11.glBindBuffer( GL11.GL_ELEMENT_ARRAY_BUFFER, group.getVBOidEdgeVertexIndex() );
+					}
+					for( iIndexTriangle = 0; iIndexTriangle < iCountTriangle; ++iIndexTriangle )
+					{
+						for( i3 = 0; i3 < 3; ++i3 )
+						{
+							iIndexEdge = iIndexTriangle * 3 + i3;
+							index2rgb( iIndexEdge, abtRGB );
+							gl11.glColor4ub( abtRGB[0], abtRGB[1], abtRGB[2], (byte)255 );
+							if( 0 != group.getVBOidEdgeVertexIndex() )
+							{ // Use VBO
+								gl11.glDrawElements( GL10.GL_LINES,
+													 2,
+													 GL10.GL_UNSIGNED_SHORT,
+													 2 * iIndexEdge * SIZEOF_SHORT );
+							}
+							else
+							{
+								gl.glDrawElements( GL10.GL_LINES,
+												   2,
+												   GL10.GL_UNSIGNED_SHORT,
+												   group.getEdgeVertexIndexBuffer().position( 2 * iIndexEdge ) );
+							}
+						}
+					}
 				}
 				else
 				{
-					// 法線ベクトル配列の指定
-					gl.glNormalPointer( GL10.GL_FLOAT, 0, model.getNormalBuffer() );
-				}
-				gl.glEnable( GL10.GL_LIGHTING ); // 光源の効果を有効にする。
-				gl.glEnable( GL10.GL_NORMALIZE ); // OpenGL側で法線ベクトルを単位法線ベクトル化するようにする
-				gl.glLightModelx( GL10.GL_LIGHT_MODEL_TWO_SIDE, 1 );// 面の表と裏に光があたるようにする
-				//gl.glEnable( GL10.GL_COLOR_MATERIAL );// 色設定をマテリアル設定として使用するようにする
-				//gl.glColor4f( 0.5f, 0.5f, 0.0f, 1.0f );
-				gl.glMaterialfv( GL10.GL_FRONT_AND_BACK, GL10.GL_AMBIENT, m_fbAmbient );
-				gl.glMaterialfv( GL10.GL_FRONT_AND_BACK, GL10.GL_DIFFUSE, m_fbDiffuse );
-				gl.glMaterialfv( GL10.GL_FRONT_AND_BACK, GL10.GL_SPECULAR, m_fbSpecular );
-				gl.glMaterialf( GL10.GL_FRONT_AND_BACK, GL10.GL_SHININESS, m_fShininess );
-			}
-			if( 0 != model.getVBOidTriangleVertexIndex() )
-			{ // Use VBO
-				gl11.glBindBuffer( GL11.GL_ELEMENT_ARRAY_BUFFER, model.getVBOidTriangleVertexIndex() );
-				gl11.glDrawElements( GL10.GL_TRIANGLES,
-									 model.getTriangleVertexIndexBuffer().capacity(),
-									 GL10.GL_UNSIGNED_SHORT,
-									 0 );
-			}
-			else
-			{
-				gl.glDrawElements( GL10.GL_TRIANGLES,
-								   model.getTriangleVertexIndexBuffer().capacity(),
-								   GL10.GL_UNSIGNED_SHORT,
-								   model.getTriangleVertexIndexBuffer().position( 0 ) );
-			}
-			gl.glDisable( GL10.GL_LIGHTING ); // 光源の効果を無効にする。
-			gl.glDisableClientState( GL10.GL_COLOR_ARRAY );
-			gl.glDisableClientState( GL10.GL_NORMAL_ARRAY ); // 法線ベクトル配列の無効化
-			// ピック面の描画
-			if( ERenderMode.RM_RENDER == eRenderMode )
-			{
-				if( ERenderElementType.RET_FACE.getValue() == m_aiName[1] )
-				{
-					int iIndexTriangle = m_aiName[2];
-					gl.glColor4f( 1.0f, 1.0f, 0.0f, 1.0f );
-					if( 0 != model.getVBOidTriangleVertexIndex() )
-					{ // Use VBO
-						gl11.glBindBuffer( GL11.GL_ELEMENT_ARRAY_BUFFER, model.getVBOidTriangleVertexIndex() );
-						gl11.glDrawElements( GL10.GL_TRIANGLES,
-											 3,
-											 GL10.GL_UNSIGNED_SHORT,
-											 3 * iIndexTriangle * SIZEOF_SHORT );
+					if( ERenderMode.RM_PICK_ELEMENTTYPE == eRenderMode )
+					{
+						gl.glColor4f( 0.0f, 1.0f, 0.0f, 1.0f );
+					}
+					else if( ERenderMode.RM_PICK_GROUPID == eRenderMode )
+					{
+						// 色はグループループの先頭で設定
 					}
 					else
 					{
-						gl.glDrawElements( GL10.GL_TRIANGLES,
-										   3,
+						gl.glColor4f( 0.0f, 0.5f, 0.5f, 1.0f );
+					}
+					if( 0 != group.getVBOidEdgeVertexIndex() )
+					{ // Use VBO
+						gl11.glBindBuffer( GL11.GL_ELEMENT_ARRAY_BUFFER, group.getVBOidEdgeVertexIndex() );
+						gl11.glDrawElements( GL10.GL_LINES,
+											 group.getEdgeVertexIndexBuffer().capacity(),
+											 GL10.GL_UNSIGNED_SHORT,
+											 0 );
+					}
+					else
+					{
+						gl.glDrawElements( GL10.GL_LINES,
+										   group.getEdgeVertexIndexBuffer().capacity(),
 										   GL10.GL_UNSIGNED_SHORT,
-										   model.getTriangleVertexIndexBuffer().position( 3 * iIndexTriangle ) );
+										   group.getEdgeVertexIndexBuffer().position( 0 ) );
 					}
 				}
-			}
-		}
-
-		// 線の描画
-		if( m_bRenderLine
-			&& null != model.getEdgeVertexIndexBuffer() )
-		{
-			gl.glLineWidth( 2.0f );
-			if( ERenderMode.RM_PICK_ELEMENTID == eRenderMode )
-			{
-				int    iCountTriangle = model.getTriangleCount();
-				int    iIndexTriangle;
-				int    i3;
-				int    iIndexEdge;
-				byte[] abtRGB         = { 0, 0, 0 };
-				if( 0 != model.getVBOidEdgeVertexIndex() )
-				{ // Use VBO
-					gl11.glBindBuffer( GL11.GL_ELEMENT_ARRAY_BUFFER, model.getVBOidEdgeVertexIndex() );
-				}
-				for( iIndexTriangle = 0; iIndexTriangle < iCountTriangle; ++iIndexTriangle )
+				// ピック線の描画
+				if( ERenderMode.RM_RENDER == eRenderMode )
 				{
-					for( i3 = 0; i3 < 3; ++i3 )
+					if( iIndexGroup == m_aiName[0]
+						&& ERenderElementType.RET_LINE.getValue() == m_aiName[1] )
 					{
-						iIndexEdge = iIndexTriangle * 3 + i3;
-						index2rgb( iIndexEdge, abtRGB );
-						gl11.glColor4ub( abtRGB[0], abtRGB[1], abtRGB[2], (byte)255 );
-						if( 0 != model.getVBOidEdgeVertexIndex() )
+						int iIndexEdge = m_aiName[2];
+						gl.glLineWidth( 5.0f );
+						gl.glColor4f( 0.0f, 1.0f, 1.0f, 1.0f );
+						if( 0 != group.getVBOidEdgeVertexIndex() )
 						{ // Use VBO
+							gl11.glBindBuffer( GL11.GL_ELEMENT_ARRAY_BUFFER, group.getVBOidEdgeVertexIndex() );
 							gl11.glDrawElements( GL10.GL_LINES,
 												 2,
 												 GL10.GL_UNSIGNED_SHORT,
@@ -262,118 +344,72 @@ public class ModelViewerRenderer extends OpenGLLightRenderer
 							gl.glDrawElements( GL10.GL_LINES,
 											   2,
 											   GL10.GL_UNSIGNED_SHORT,
-											   model.getEdgeVertexIndexBuffer().position( 2 * iIndexEdge ) );
+											   group.getEdgeVertexIndexBuffer().position( 2 * iIndexEdge ) );
 						}
 					}
 				}
 			}
-			else
+
+			// 点の描画
+			if( m_bRenderPoint )
+			// && null != group.getVertexBuffer() )
 			{
-				if( ERenderMode.RM_PICK_ELEMENTTYPE == eRenderMode )
+				gl.glPointSize( 5.0f );
+				if( ERenderMode.RM_PICK_ELEMENTID == eRenderMode )
 				{
-					gl.glColor4f( 0.0f, 1.0f, 0.0f, 1.0f );
-				}
-				else
-				{
-					gl.glColor4f( 0.0f, 0.5f, 0.5f, 1.0f );
-				}
-				if( 0 != model.getVBOidEdgeVertexIndex() )
-				{ // Use VBO
-					gl11.glBindBuffer( GL11.GL_ELEMENT_ARRAY_BUFFER, model.getVBOidEdgeVertexIndex() );
-					gl11.glDrawElements( GL10.GL_LINES,
-										 model.getEdgeVertexIndexBuffer().capacity(),
-										 GL10.GL_UNSIGNED_SHORT,
-										 0 );
-				}
-				else
-				{
-					gl.glDrawElements( GL10.GL_LINES,
-									   model.getEdgeVertexIndexBuffer().capacity(),
-									   GL10.GL_UNSIGNED_SHORT,
-									   model.getEdgeVertexIndexBuffer().position( 0 ) );
-				}
-			}
-			// ピック線の描画
-			if( ERenderMode.RM_RENDER == eRenderMode )
-			{
-				if( ERenderElementType.RET_LINE.getValue() == m_aiName[1] )
-				{
-					int iIndexEdge = m_aiName[2];
-					gl.glLineWidth( 5.0f );
-					gl.glColor4f( 0.0f, 1.0f, 1.0f, 1.0f );
-					if( 0 != model.getVBOidEdgeVertexIndex() )
+					gl.glEnableClientState( GL10.GL_COLOR_ARRAY );
+					if( 0 != getVBOidVertexIdColor() )
 					{ // Use VBO
-						gl11.glBindBuffer( GL11.GL_ELEMENT_ARRAY_BUFFER, model.getVBOidEdgeVertexIndex() );
-						gl11.glDrawElements( GL10.GL_LINES,
-											 2,
-											 GL10.GL_UNSIGNED_SHORT,
-											 2 * iIndexEdge * SIZEOF_SHORT );
+						// 色配列の指定
+						gl11.glBindBuffer( GL11.GL_ARRAY_BUFFER, getVBOidVertexIdColor() );
+						gl11.glColorPointer( 4, // Must be 4.
+											 GL10.GL_UNSIGNED_BYTE,
+											 0,
+											 0 );
 					}
 					else
 					{
-						gl.glDrawElements( GL10.GL_LINES,
-										   2,
-										   GL10.GL_UNSIGNED_SHORT,
-										   model.getEdgeVertexIndexBuffer().position( 2 * iIndexEdge ) );
+						// 色配列の指定
+						gl.glColorPointer( 4, // Must be 4.
+										   GL10.GL_UNSIGNED_BYTE,
+										   0,
+										   getVertexIdColorBuffer() );
 					}
 				}
-			}
-		}
-
-		// 点の描画
-		if( m_bRenderPoint )
-		// && null != model.getVertexBuffer() )
-		{
-			gl.glPointSize( 5.0f );
-			if( ERenderMode.RM_PICK_ELEMENTID == eRenderMode )
-			{
-				gl.glEnableClientState( GL10.GL_COLOR_ARRAY );
-				if( 0 != getVBOidVertexIdColor() )
-				{ // Use VBO
-					// 色配列の指定
-					gl11.glBindBuffer( GL11.GL_ARRAY_BUFFER, getVBOidVertexIdColor() );
-					gl11.glColorPointer( 4, // Must be 4.
-										 GL10.GL_UNSIGNED_BYTE,
-										 0,
-										 0 );
+				else if( ERenderMode.RM_PICK_ELEMENTTYPE == eRenderMode )
+				{
+					gl.glColor4f( 0.0f, 0.0f, 1.0f, 1.0f );
+				}
+				else if( ERenderMode.RM_PICK_GROUPID == eRenderMode )
+				{
+					// 色はグループループの先頭で設定
 				}
 				else
 				{
-					// 色配列の指定
-					gl.glColorPointer( 4, // Must be 4.
-									   GL10.GL_UNSIGNED_BYTE,
-									   0,
-									   getVertexIdColorBuffer() );
+					gl.glColor4f( 0.5f, 0.0f, 0.5f, 1.0f );
 				}
-			}
-			else if( ERenderMode.RM_PICK_ELEMENTTYPE == eRenderMode )
-			{
-				gl.glColor4f( 0.0f, 0.0f, 1.0f, 1.0f );
-			}
-			else
-			{
-				gl.glColor4f( 0.5f, 0.0f, 0.5f, 1.0f );
-			}
-			gl.glDrawArrays( GL10.GL_POINTS, 0, model.getVertexCount() );
-			gl.glDisableClientState( GL10.GL_COLOR_ARRAY );
-			// ピック点の描画
-			if( ERenderMode.RM_RENDER == eRenderMode )
-			{
-				if( ERenderElementType.RET_POINT.getValue() == m_aiName[1] )
+				gl.glDrawArrays( GL10.GL_POINTS, 0, group.getVertexCount() );
+				gl.glDisableClientState( GL10.GL_COLOR_ARRAY );
+				// ピック点の描画
+				if( ERenderMode.RM_RENDER == eRenderMode )
 				{
-					gl.glPointSize( 10.0f );
-					gl.glColor4f( 1.0f, 0.0f, 1.0f, 1.0f );
-					int iIndexPoint = m_aiName[2];
-					gl.glDrawArrays( GL10.GL_POINTS, iIndexPoint, 1 );
+					if( iIndexGroup == m_aiName[0]
+						&& ERenderElementType.RET_POINT.getValue() == m_aiName[1] )
+					{
+						gl.glPointSize( 10.0f );
+						gl.glColor4f( 1.0f, 0.0f, 1.0f, 1.0f );
+						int iIndexPoint = m_aiName[2];
+						gl.glDrawArrays( GL10.GL_POINTS, iIndexPoint, 1 );
+					}
 				}
 			}
-		}
 
-		if( 0 != model.getVBOidVertex() )
-		{ // Use VBO
-			// バインドの解除
-			gl11.glBindBuffer( GL11.GL_ARRAY_BUFFER, 0 );
-			gl11.glBindBuffer( GL11.GL_ELEMENT_ARRAY_BUFFER, 0 );
+			if( 0 != group.getVBOidVertex() )
+			{ // Use VBO
+				// バインドの解除
+				gl11.glBindBuffer( GL11.GL_ARRAY_BUFFER, 0 );
+				gl11.glBindBuffer( GL11.GL_ELEMENT_ARRAY_BUFFER, 0 );
+			}
 		}
 
 		// 頂点配列の無効化
@@ -658,12 +694,15 @@ public class ModelViewerRenderer extends OpenGLLightRenderer
 		// モデルに関するVBO
 		if( null != getModel() )
 		{
-			getModel().createVBO( getGL() );
+			for( int iIndexGroup = 0; iIndexGroup < getModel().getGroupCount(); ++iIndexGroup )
+			{
+				getModel().getGroup( iIndexGroup ).createVBO( getGL() );
+			}
 		}
 
 		// ピック処理用の要素番号色に関するVBO
 		if( null != getModel() )
-		{    // ピック処理用の要素番号色は、モデルと連動しているので、モデルがない場合は、VBO作成スキップ
+		{ // ピック処理用の要素番号色は、モデルと連動しているので、モデルがない場合は、VBO作成スキップ
 			// VBO ID 配列の生成
 			gl11.glGenBuffers( m_aiVBOidIdColor.length, m_aiVBOidIdColor, 0 );
 			// データの転送
@@ -701,8 +740,10 @@ public class ModelViewerRenderer extends OpenGLLightRenderer
 		// モデルに関するVBO
 		if( null != getModel() )
 		{
-			getModel().destroyVBO( getGL() );
+			for( int iIndexGroup = 0; iIndexGroup < getModel().getGroupCount(); ++iIndexGroup )
+			{
+				getModel().getGroup( iIndexGroup ).destroyVBO( getGL() );
+			}
 		}
 	}
 }
-

@@ -27,6 +27,7 @@ public class OpenGLPickRenderer extends OpenGLModelRenderer
 	enum ERenderMode
 	{
 		RM_RENDER,
+		RM_PICK_GROUPID,
 		RM_PICK_ELEMENTTYPE,
 		RM_PICK_ELEMENTID,
 	}
@@ -94,11 +95,27 @@ public class OpenGLPickRenderer extends OpenGLModelRenderer
 			return;
 		}
 
+		int   iCountPoint_max    = 0;
+		int   iCountTriangle_max = 0;
+		Group group;
+		for( int iIndexGroup = 0; iIndexGroup < model.getGroupCount(); ++iIndexGroup )
+		{
+			group = model.getGroup( iIndexGroup );
+
+			if( iCountPoint_max < group.getVertexCount() )
+			{
+				iCountPoint_max = group.getVertexCount();
+			}
+			if( iCountTriangle_max < group.getTriangleCount() )
+			{
+				iCountTriangle_max = group.getTriangleCount();
+			}
+		}
+
 		byte[] abtRGB = { 0, 0, 0 };
 
-		int    iCountPoint      = model.getVertexCount();
-		byte[] abt4PointIdColor = new byte[iCountPoint * 4];
-		for( int i = 0; i < iCountPoint; i++ )
+		byte[] abt4PointIdColor = new byte[iCountPoint_max * 4];
+		for( int i = 0; i < iCountPoint_max; i++ )
 		{
 			index2rgb( i, abtRGB );
 			abt4PointIdColor[i * 4 + 0] = abtRGB[0];
@@ -108,9 +125,8 @@ public class OpenGLPickRenderer extends OpenGLModelRenderer
 		}
 		m_btbVertexIdColor = makeByteBuffer( abt4PointIdColor );
 
-		int    iCountTriangle      = model.getTriangleCount();
-		byte[] abt4TriangleIdColor = new byte[iCountTriangle * 3 * 4];
-		for( int i = 0; i < iCountTriangle; i++ )
+		byte[] abt4TriangleIdColor = new byte[iCountTriangle_max * 3 * 4];
+		for( int i = 0; i < iCountTriangle_max; i++ )
 		{
 			index2rgb( i, abtRGB );
 			abt4TriangleIdColor[i * 12 + 0] = abtRGB[0];
@@ -137,159 +153,6 @@ public class OpenGLPickRenderer extends OpenGLModelRenderer
 
 	protected void renderModel( ERenderMode eRenderMode )
 	{
-		Model model = getModel();
-		if( null == model
-			|| null == model.getVertexBuffer() )
-		{
-			return;
-		}
-
-		GL10 gl = getGL();
-
-		if( !( gl instanceof GL11 ) )
-		{
-			return;
-		}
-		GL11 gl11 = (GL11)gl;
-
-		// 頂点配列の有効化
-		gl.glEnableClientState( GL10.GL_VERTEX_ARRAY );
-
-		// 頂点配列の指定
-		gl.glVertexPointer( 3, GL10.GL_FLOAT, 0, model.getVertexBuffer() );
-
-		// 面の描画
-		if( null != model.getTriangleVertexIndexBuffer() )
-		{
-			if( ERenderMode.RM_PICK_ELEMENTID == eRenderMode )
-			{
-				gl.glEnableClientState( GL10.GL_COLOR_ARRAY );
-				gl.glColorPointer( 4, // Must be 4.
-								   GL10.GL_UNSIGNED_BYTE,
-								   0,
-								   m_btbTriangleIdColor );
-			}
-			else if( ERenderMode.RM_PICK_ELEMENTTYPE == eRenderMode )
-			{
-				gl.glColor4f( 1.0f, 0.0f, 0.0f, 1.0f );
-			}
-			else
-			{
-				gl.glColor4f( 0.5f, 0.5f, 0.0f, 1.0f );
-			}
-			gl.glDrawElements( GL10.GL_TRIANGLES,
-							   model.getTriangleVertexIndexBuffer().capacity(),
-							   GL10.GL_UNSIGNED_SHORT,
-							   model.getTriangleVertexIndexBuffer().position( 0 ) );
-			gl.glDisableClientState( GL10.GL_COLOR_ARRAY );
-			// ピック面の描画
-			if( ERenderMode.RM_RENDER == eRenderMode )
-			{
-				if( ERenderElementType.RET_FACE.getValue() == m_aiName[1] )
-				{
-					int iIndexTriangle = m_aiName[2];
-					gl.glColor4f( 1.0f, 1.0f, 0.0f, 1.0f );
-					gl.glDrawElements( GL10.GL_TRIANGLES,
-									   3,
-									   GL10.GL_UNSIGNED_SHORT,
-									   model.getTriangleVertexIndexBuffer().position( 3 * iIndexTriangle ) );
-				}
-			}
-		}
-
-		// 線の描画
-		if( null != model.getEdgeVertexIndexBuffer() )
-		{
-			gl.glLineWidth( 2.0f );
-			if( ERenderMode.RM_PICK_ELEMENTID == eRenderMode )
-			{
-				int    iCountTriangle = model.getTriangleCount();
-				int    iIndexTriangle;
-				int    i3;
-				int    iIndexEdge;
-				byte[] abtRGB         = { 0, 0, 0 };
-				for( iIndexTriangle = 0; iIndexTriangle < iCountTriangle; ++iIndexTriangle )
-				{
-					for( i3 = 0; i3 < 3; ++i3 )
-					{
-						iIndexEdge = iIndexTriangle * 3 + i3;
-						index2rgb( iIndexEdge, abtRGB );
-						gl11.glColor4ub( abtRGB[0], abtRGB[1], abtRGB[2], (byte)255 );
-						gl.glDrawElements( GL10.GL_LINES,
-										   2,
-										   GL10.GL_UNSIGNED_SHORT,
-										   model.getEdgeVertexIndexBuffer().position( 2 * iIndexEdge ) );
-					}
-				}
-			}
-			else
-			{
-				if( ERenderMode.RM_PICK_ELEMENTTYPE == eRenderMode )
-				{
-					gl.glColor4f( 0.0f, 1.0f, 0.0f, 1.0f );
-				}
-				else
-				{
-					gl.glColor4f( 0.0f, 0.5f, 0.5f, 1.0f );
-				}
-				gl.glDrawElements( GL10.GL_LINES,
-								   model.getEdgeVertexIndexBuffer().capacity(),
-								   GL10.GL_UNSIGNED_SHORT,
-								   model.getEdgeVertexIndexBuffer().position( 0 ) );
-			}
-			// ピック線の描画
-			if( ERenderMode.RM_RENDER == eRenderMode )
-			{
-				if( ERenderElementType.RET_LINE.getValue() == m_aiName[1] )
-				{
-					int iIndexEdge = m_aiName[2];
-					gl.glLineWidth( 5.0f );
-					gl.glColor4f( 0.0f, 1.0f, 1.0f, 1.0f );
-					gl.glDrawElements( GL10.GL_LINES,
-									   2,
-									   GL10.GL_UNSIGNED_SHORT,
-									   model.getEdgeVertexIndexBuffer().position( 2 * iIndexEdge ) );
-				}
-			}
-		}
-
-		// 点の描画
-		// if( null != model.getVertexBuffer() )
-		{
-			gl.glPointSize( 5.0f );
-			if( ERenderMode.RM_PICK_ELEMENTID == eRenderMode )
-			{
-				gl.glEnableClientState( GL10.GL_COLOR_ARRAY );
-				gl.glColorPointer( 4, // Must be 4.
-								   GL10.GL_UNSIGNED_BYTE,
-								   0,
-								   m_btbVertexIdColor );
-			}
-			else if( ERenderMode.RM_PICK_ELEMENTTYPE == eRenderMode )
-			{
-				gl.glColor4f( 0.0f, 0.0f, 1.0f, 1.0f );
-			}
-			else
-			{
-				gl.glColor4f( 0.5f, 0.0f, 0.5f, 1.0f );
-			}
-			gl.glDrawArrays( GL10.GL_POINTS, 0, model.getVertexCount() );
-			gl.glDisableClientState( GL10.GL_COLOR_ARRAY );
-			// ピック点の描画
-			if( ERenderMode.RM_RENDER == eRenderMode )
-			{
-				if( ERenderElementType.RET_POINT.getValue() == m_aiName[1] )
-				{
-					gl.glPointSize( 10.0f );
-					gl.glColor4f( 1.0f, 0.0f, 1.0f, 1.0f );
-					int iIndexPoint = m_aiName[2];
-					gl.glDrawArrays( GL10.GL_POINTS, iIndexPoint, 1 );
-				}
-			}
-		}
-
-		// 頂点配列の無効化
-		gl.glDisableClientState( GL10.GL_VERTEX_ARRAY );
 	}
 
 	private int rgb2index( byte r, byte g, byte b )
@@ -474,6 +337,26 @@ public class OpenGLPickRenderer extends OpenGLModelRenderer
 					b = btbPixel.get( i * 4 + 2 );
 					// 色を番号に変換し、名前配列にセット
 					aaiName[i][2] = rgb2index( r, g, b );
+				}
+
+				// ピック描画（グループ番号別）
+				gl.glClear( GL10.GL_COLOR_BUFFER_BIT | GL10.GL_DEPTH_BUFFER_BIT );
+				renderModel( ERenderMode.RM_PICK_GROUPID );
+				gl.glReadPixels( (int)fX - PICKREGIONOFFSET,
+								 getHeight() - (int)fY - PICKREGIONOFFSET,
+								 1 + 2 * PICKREGIONOFFSET,
+								 1 + 2 * PICKREGIONOFFSET,
+								 GL10.GL_RGBA,
+								 GL10.GL_UNSIGNED_BYTE,
+								 btbPixel );
+				// ピック領域の色をピック名配列に変換
+				for( int i = 0; i < aaiName.length; ++i )
+				{
+					r = btbPixel.get( i * 4 + 0 );
+					g = btbPixel.get( i * 4 + 1 );
+					b = btbPixel.get( i * 4 + 2 );
+					// 色を番号に変換し、名前配列にセット
+					aaiName[i][0] = rgb2index( r, g, b );
 				}
 
 				// ピックピクセルを一つに絞って、名前列メンバの更新

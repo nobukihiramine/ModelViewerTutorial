@@ -52,7 +52,17 @@ public class StlFileLoader
 			return null;
 		}
 
-		return new Model( af3Vertex );
+		//return new Model( af3Vertex );
+
+		// モデルデータ化
+		float[] f4Ambient = { 0.25f, 0.20725f, 0.20725f, 1.0f };
+		float[] f4Diffuse = { 1.0f, 0.829f, 0.829f, 1.0f };
+		float[] f4Specular = { 0.296648f, 0.296648f, 0.296648f, 1.0f };
+		float fShininess = 0.088f;
+		Material material = new Material(f4Ambient, f4Diffuse, f4Specular, fShininess);
+		Group[] aGroup = new Group[1];
+		aGroup[0] = new Group( "", af3Vertex, null, material );
+		return new Model( aGroup );
 	}
 
 	private static boolean parse_first( String strPath, int[] aiCountTriangle )
