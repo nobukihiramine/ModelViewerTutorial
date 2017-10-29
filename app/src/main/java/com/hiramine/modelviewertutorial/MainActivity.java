@@ -153,7 +153,7 @@ public class MainActivity extends AppCompatActivity
 				// ファイル選択アクティビティ
 				Intent intent = new Intent( this, FileSelectionActivity.class );
 				intent.putExtra( FileSelectionActivity.EXTRA_INITIAL_DIR, m_strInitialDir );
-				intent.putExtra( FileSelectionActivity.EXTRA_EXT, "stl" );
+				intent.putExtra( FileSelectionActivity.EXTRA_EXT, "stl; obj" );
 				startActivityForResult( intent, REQUEST_FILESELECT );
 				return true;
 		}

@@ -226,7 +226,7 @@ public class ModelViewerView extends GLSurfaceView implements GestureDetector.On
 
 	public void loadModelFile( String strPath )
 	{
-		final Model model = StlFileLoader.load( strPath );
+		final Model model = ModelFileLoader.load( strPath );
 		if( null == model )
 		{
 			Toast.makeText( getContext(), "Failed to load file : " + strPath, Toast.LENGTH_SHORT ).show();

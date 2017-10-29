@@ -13,20 +13,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.hiramine.modelviewertutorial;
-
-import android.util.Log;
+package com.hiramine.modelfileloader;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.util.StringTokenizer;
 
+import android.util.Log;
+
 public class StlFileLoader
 {
-	public static Model load( String strPath )
+	public static MFLModel load( String strPath, OnProgressListener onProgressListener )
 	{
-		File file = new File( strPath );
+		File file      = new File( strPath );
 		if( 0 == file.length() )
 		{
 			return null;
@@ -34,7 +34,8 @@ public class StlFileLoader
 
 		// ファーストパース（要素数カウント）
 		int[] aiCountTriangle = new int[1];
-		if( !parse_first( strPath, aiCountTriangle ) )
+		int[] aiCountLine     = new int[1];
+		if( !parse_first( strPath, aiCountTriangle, aiCountLine ) )
 		{
 			return null;
 		}
@@ -44,43 +45,62 @@ public class StlFileLoader
 		{
 			return null;
 		}
-		float[] af3Vertex = new float[aiCountTriangle[0] * 3 * 3];
+		float[] af3Vertex = new float[aiCountTriangle[0] * 3 * 3]; // af3Vertexは、3つのデータで一つの頂点、さらにそれが3つで一つの三角形
 
 		// セカンドパース（値詰め）
-		if( !parse_second( strPath, af3Vertex ) )
+		if( !parse_second( strPath, af3Vertex, aiCountLine[0], onProgressListener ) )
 		{
 			return null;
 		}
 
-		//return new Model( af3Vertex );
-
-		// モデルデータ化
-		float[] f4Ambient = { 0.25f, 0.20725f, 0.20725f, 1.0f };
-		float[] f4Diffuse = { 1.0f, 0.829f, 0.829f, 1.0f };
-		float[] f4Specular = { 0.296648f, 0.296648f, 0.296648f, 1.0f };
-		float fShininess = 0.088f;
-		Material material = new Material(f4Ambient, f4Diffuse, f4Specular, fShininess);
-		Group[] aGroup = new Group[1];
-		aGroup[0] = new Group( "", af3Vertex, null, material );
-		return new Model( aGroup );
+		// 領域確保、データ構築
+		MFLModel model = new MFLModel();
+		model.iCountVertex = af3Vertex.length / 3;
+		model.af3Vertex = af3Vertex;
+		model.iCountTriangle = model.iCountVertex / 3;
+		model.aIndexedTriangle = new MFLIndexedTriangle[model.iCountTriangle];
+		for( int iIndexTriangle = 0; iIndexTriangle < model.iCountTriangle; ++iIndexTriangle )
+		{
+			model.aIndexedTriangle[iIndexTriangle] = new MFLIndexedTriangle();
+			model.aIndexedTriangle[iIndexTriangle].i3IndexVertex[0] = (short)( iIndexTriangle * 3 + 0 );
+			model.aIndexedTriangle[iIndexTriangle].i3IndexVertex[1] = (short)( iIndexTriangle * 3 + 1 );
+			model.aIndexedTriangle[iIndexTriangle].i3IndexVertex[2] = (short)( iIndexTriangle * 3 + 2 );
+		}
+		model.iCountNormal = 0;
+		model.af3Normal = null;
+		model.aMaterial = null;
+		model.groupRoot = new MFLGroup( "" );
+		model.groupRoot.iCountTriangle = model.iCountTriangle;
+		model.groupRoot.aiIndexTriangle = new int[model.groupRoot.iCountTriangle];
+		for( int iIndexTriangle = 0; iIndexTriangle < model.groupRoot.iCountTriangle; ++iIndexTriangle )
+		{
+			model.groupRoot.aiIndexTriangle[iIndexTriangle] = iIndexTriangle;
+		}
+		return model;
 	}
 
-	private static boolean parse_first( String strPath, int[] aiCountTriangle )
+	private static boolean parse_first( String strPath, int[] aiCountTriangle, int[] aiCountLine )
 	{
 		// インプットのチェック
-		if( null == aiCountTriangle )
+		if( null == aiCountTriangle
+			|| null == aiCountLine )
 		{
 			return false;
 		}
 		// アウトプットの初期化
 		aiCountTriangle[0] = 0;
+		aiCountLine[0] = 0;
 
 		try
 		{
-			BufferedReader br             = new BufferedReader( new FileReader( strPath ) );
-			int            iIndexTriangle = 0;
+			// 読み取り
+			BufferedReader br = new BufferedReader( new FileReader( strPath ) );
+
+			int iIndexTriangle = 0;
+			int iIndexLine     = 0;
 			while( true )
 			{
+				++iIndexLine;
 				String strReadString = br.readLine();
 				if( null == strReadString )
 				{
@@ -98,8 +118,11 @@ public class StlFileLoader
 					continue;
 				}
 			}
+
 			br.close();
+
 			aiCountTriangle[0] = iIndexTriangle;
+			aiCountLine[0] = iIndexLine;
 			return true;
 		}
 		catch( Exception e )
@@ -109,21 +132,34 @@ public class StlFileLoader
 		}
 	}
 
-	private static boolean parse_second( String strPath, float[] af3Vertex )
+	private static boolean parse_second( String strPath, float[] af3Vertex, int iCountLine, OnProgressListener onProgressListener )
 	{
 		// インプットのチェック
 		if( null == af3Vertex )
 		{
 			return false;
 		}
-		int iIndexTriangle = 0;
-		int iIndex3        = 0;
 
 		try
 		{
+			// 読み取り
 			BufferedReader br = new BufferedReader( new FileReader( strPath ) );
+
+			int iIndexTriangle = 0;
+			int iIndexLine     = 0;
+			int iIndex3        = 0;
 			while( true )
 			{
+				if( null != onProgressListener
+					&& 0 == iIndexLine % 100 )
+				{
+					if( !onProgressListener.updateProgress( iIndexLine, iCountLine ) )
+					{    // ユーザー操作による処理中止
+						Log.d( "LoaderStlFile", "Cancelled" );
+						return false;
+					}
+				}
+				++iIndexLine;
 				String strReadString = br.readLine();
 				if( null == strReadString )
 				{
@@ -162,7 +198,9 @@ public class StlFileLoader
 					continue;
 				}
 			}
+
 			br.close();
+
 			return true;
 		}
 		catch( Exception e )
@@ -172,4 +210,3 @@ public class StlFileLoader
 		}
 	}
 }
-
