@@ -30,7 +30,7 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 import javax.microedition.khronos.opengles.GL11;
 
-public class ModelViewerRenderer extends OpenGLPickRenderer
+public class ModelViewerRenderer extends OpenGLLightRenderer
 {
 	// 定数
 	private static final int SIZEOF_BYTE  = Byte.SIZE / 8;    // Byte.SIZEで、byte型のビット数が得られるので、8で割って、バイト数を得る
@@ -148,6 +148,22 @@ public class ModelViewerRenderer extends OpenGLPickRenderer
 			}
 			else
 			{
+				gl.glEnableClientState( GL10.GL_NORMAL_ARRAY );
+				if( 0 != model.getVBOidNormal() )
+				{ // Use VBO
+					// 法線ベクトル配列の指定
+					gl11.glBindBuffer( GL11.GL_ARRAY_BUFFER, model.getVBOidNormal() );
+					gl11.glNormalPointer( GL10.GL_FLOAT, 0, 0 );
+				}
+				else
+				{
+					// 法線ベクトル配列の指定
+					gl.glNormalPointer( GL10.GL_FLOAT, 0, model.getNormalBuffer() );
+				}
+				gl.glEnable( GL10.GL_LIGHTING ); // 光源の効果を有効にする。
+				gl.glEnable( GL10.GL_NORMALIZE ); // OpenGL側で法線ベクトルを単位法線ベクトル化するようにする
+				gl.glLightModelx( GL10.GL_LIGHT_MODEL_TWO_SIDE, 1 );// 面の表と裏に光があたるようにする
+				gl.glEnable( GL10.GL_COLOR_MATERIAL );// 色設定をマテリアル設定として使用するようにする
 				gl.glColor4f( 0.5f, 0.5f, 0.0f, 1.0f );
 			}
 			if( 0 != model.getVBOidTriangleVertexIndex() )
@@ -165,7 +181,9 @@ public class ModelViewerRenderer extends OpenGLPickRenderer
 								   GL10.GL_UNSIGNED_SHORT,
 								   model.getTriangleVertexIndexBuffer().position( 0 ) );
 			}
+			gl.glDisable( GL10.GL_LIGHTING ); // 光源の効果を無効にする。
 			gl.glDisableClientState( GL10.GL_COLOR_ARRAY );
+			gl.glDisableClientState( GL10.GL_NORMAL_ARRAY ); // 法線ベクトル配列の無効化
 			// ピック面の描画
 			if( ERenderMode.RM_RENDER == eRenderMode )
 			{

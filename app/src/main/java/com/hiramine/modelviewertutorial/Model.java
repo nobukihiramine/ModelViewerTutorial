@@ -32,7 +32,8 @@ public class Model
 	private FloatBuffer m_fbVertex;                // 頂点の座標値の配列（３つの座標値で１頂点）
 	private ShortBuffer m_sbTriangleVertexIndex;    // 三角形の頂点の番号の配列（３つの頂点番号で１三角形）（unsigned shortの上限は65535）
 	private ShortBuffer m_sbEdgeVertexIndex;        // 稜線の番号配列（２つの頂点番号で１稜線）（unsigned shortの上限は65535）
-	private int[] m_aiVBOid = new int[3];        // VBO ID
+	private FloatBuffer m_fbNormal;    // 法線ベクトルの成分値の配列（３つの成分値で１法線ベクトル）
+	private int[] m_aiVBOid = new int[4];        // VBO ID
 
 	// コンストラクタ
 	public Model( float[] af3Vertex )
@@ -65,6 +66,51 @@ public class Model
 			asEdgeVertexIndex[iIndexTriangle * 6 + 5] = asTriangleVertexIndex[iIndexTriangle * 3 + 0];
 		}
 		m_sbEdgeVertexIndex = OpenGLBaseRenderer.makeShortBuffer( asEdgeVertexIndex );
+
+		// 法線ベクトルの数は、三角形の数の３倍。１つの法線ベクトルは、３成分。
+		float[] af3Normal      = new float[iCountTriangle * 3 * 3];
+		float[] f3Vertex0      = { 0.0f, 0.0f, 0.0f };
+		float[] f3Vertex1      = { 0.0f, 0.0f, 0.0f };
+		float[] f3Vertex2      = { 0.0f, 0.0f, 0.0f };
+		float[] f3Vector01     = { 0.0f, 0.0f, 0.0f };
+		float[] f3Vector12     = { 0.0f, 0.0f, 0.0f };
+		float[] f3VectorNormal = { 0.0f, 0.0f, 0.0f };
+		float   fLength;
+		for( int iIndexTriangle = 0; iIndexTriangle < iCountTriangle; iIndexTriangle++ )
+		{
+			f3Vertex0[0] = af3Vertex[3 * ( asTriangleVertexIndex[iIndexTriangle * 3 + 0] ) + 0];
+			f3Vertex0[1] = af3Vertex[3 * ( asTriangleVertexIndex[iIndexTriangle * 3 + 0] ) + 1];
+			f3Vertex0[2] = af3Vertex[3 * ( asTriangleVertexIndex[iIndexTriangle * 3 + 0] ) + 2];
+			f3Vertex1[0] = af3Vertex[3 * ( asTriangleVertexIndex[iIndexTriangle * 3 + 1] ) + 0];
+			f3Vertex1[1] = af3Vertex[3 * ( asTriangleVertexIndex[iIndexTriangle * 3 + 1] ) + 1];
+			f3Vertex1[2] = af3Vertex[3 * ( asTriangleVertexIndex[iIndexTriangle * 3 + 1] ) + 2];
+			f3Vertex2[0] = af3Vertex[3 * ( asTriangleVertexIndex[iIndexTriangle * 3 + 2] ) + 0];
+			f3Vertex2[1] = af3Vertex[3 * ( asTriangleVertexIndex[iIndexTriangle * 3 + 2] ) + 1];
+			f3Vertex2[2] = af3Vertex[3 * ( asTriangleVertexIndex[iIndexTriangle * 3 + 2] ) + 2];
+			f3Vector01[0] = f3Vertex1[0] - f3Vertex0[0];
+			f3Vector01[1] = f3Vertex1[1] - f3Vertex0[1];
+			f3Vector01[2] = f3Vertex1[2] - f3Vertex0[2];
+			f3Vector12[0] = f3Vertex2[0] - f3Vertex1[0];
+			f3Vector12[1] = f3Vertex2[1] - f3Vertex1[1];
+			f3Vector12[2] = f3Vertex2[2] - f3Vertex1[2];
+			f3VectorNormal[0] = f3Vector01[1] * f3Vector12[2] - f3Vector01[2] * f3Vector12[1];
+			f3VectorNormal[1] = f3Vector01[2] * f3Vector12[0] - f3Vector01[0] * f3Vector12[2];
+			f3VectorNormal[2] = f3Vector01[0] * f3Vector12[1] - f3Vector01[1] * f3Vector12[0];
+			fLength = (float)Math.sqrt( f3VectorNormal[0] * f3VectorNormal[0] + f3VectorNormal[1] * f3VectorNormal[1] + f3VectorNormal[2] * f3VectorNormal[2] );
+			f3VectorNormal[0] /= fLength;
+			f3VectorNormal[1] /= fLength;
+			f3VectorNormal[2] /= fLength;
+			af3Normal[iIndexTriangle * 9 + 0] = f3VectorNormal[0];
+			af3Normal[iIndexTriangle * 9 + 1] = f3VectorNormal[1];
+			af3Normal[iIndexTriangle * 9 + 2] = f3VectorNormal[2];
+			af3Normal[iIndexTriangle * 9 + 3] = f3VectorNormal[0];
+			af3Normal[iIndexTriangle * 9 + 4] = f3VectorNormal[1];
+			af3Normal[iIndexTriangle * 9 + 5] = f3VectorNormal[2];
+			af3Normal[iIndexTriangle * 9 + 6] = f3VectorNormal[0];
+			af3Normal[iIndexTriangle * 9 + 7] = f3VectorNormal[1];
+			af3Normal[iIndexTriangle * 9 + 8] = f3VectorNormal[2];
+		}
+		m_fbNormal = OpenGLBaseRenderer.makeFloatBuffer( af3Normal );
 	}
 
 	// アクセサ
@@ -81,6 +127,11 @@ public class Model
 	public ShortBuffer getEdgeVertexIndexBuffer()
 	{
 		return m_sbEdgeVertexIndex;
+	}
+
+	public FloatBuffer getNormalBuffer()
+	{
+		return m_fbNormal;
 	}
 
 	public int getVertexCount()
@@ -113,6 +164,11 @@ public class Model
 		return m_aiVBOid[2];
 	}
 
+	public int getVBOidNormal()
+	{
+		return m_aiVBOid[3];
+	}
+
 	public void createVBO( GL10 gl )
 	{
 		destroyVBO( gl );
@@ -140,6 +196,10 @@ public class Model
 			// EdgeVertexIndexデータの転送
 			gl11.glBindBuffer( GL11.GL_ELEMENT_ARRAY_BUFFER, getVBOidEdgeVertexIndex() );
 			gl11.glBufferData( GL11.GL_ELEMENT_ARRAY_BUFFER, m_sbEdgeVertexIndex.capacity() * SIZEOF_SHORT, m_sbEdgeVertexIndex, GL11.GL_STATIC_DRAW );
+
+			// Normalデータの転送
+			gl11.glBindBuffer( GL11.GL_ARRAY_BUFFER, getVBOidNormal() );
+			gl11.glBufferData( GL11.GL_ARRAY_BUFFER, m_fbNormal.capacity() * SIZEOF_FLOAT, m_fbNormal, GL11.GL_STATIC_DRAW );
 
 			// バインドの解除
 			gl11.glBindBuffer( GL11.GL_ARRAY_BUFFER, 0 );
