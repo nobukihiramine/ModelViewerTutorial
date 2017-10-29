@@ -23,6 +23,7 @@ import android.graphics.Typeface;
 import android.opengl.GLUtils;
 
 import java.nio.FloatBuffer;
+import java.util.Arrays;
 import java.util.Locale;
 
 import javax.microedition.khronos.egl.EGLConfig;
@@ -31,6 +32,10 @@ import javax.microedition.khronos.opengles.GL11;
 
 public class ModelViewerRenderer extends OpenGLPickRenderer
 {
+	// 定数
+	private static final int SIZEOF_BYTE  = Byte.SIZE / 8;    // Byte.SIZEで、byte型のビット数が得られるので、8で割って、バイト数を得る
+	private static final int SIZEOF_SHORT = Short.SIZE / 8;    // Short.SIZEで、short型のビット数が得られるので、8で割って、バイト数を得る
+
 	// メンバー変数
 	public  boolean     m_bRenderPoint;
 	public  boolean     m_bRenderLine;
@@ -42,6 +47,7 @@ public class ModelViewerRenderer extends OpenGLPickRenderer
 	private int         m_iMessageTextureID;
 	private FloatBuffer m_fbVertexMessageTexture;
 	private FloatBuffer m_fbTextureMessageTexture;
+	private int[] m_aiVBOidIdColor = new int[2];        // VBO ID
 
 	// コンストラクタ
 	public ModelViewerRenderer()
@@ -67,6 +73,17 @@ public class ModelViewerRenderer extends OpenGLPickRenderer
 		m_fbTextureMessageTexture = makeFloatBuffer( f4TextureCoord );
 	}
 
+	// アクセサ
+	public int getVBOidVertexIdColor()
+	{
+		return m_aiVBOidIdColor[0];
+	}
+
+	public int getVBOidTriangleIdColor()
+	{
+		return m_aiVBOidIdColor[1];
+	}
+
 	@Override
 	protected void renderModel( ERenderMode eRenderMode )
 	{
@@ -88,8 +105,17 @@ public class ModelViewerRenderer extends OpenGLPickRenderer
 		// 頂点配列の有効化
 		gl.glEnableClientState( GL10.GL_VERTEX_ARRAY );
 
-		// 頂点配列の指定
-		gl.glVertexPointer( 3, GL10.GL_FLOAT, 0, model.getVertexBuffer() );
+		if( 0 != model.getVBOidVertex() )
+		{ // Use VBO
+			// 頂点配列の指定
+			gl11.glBindBuffer( GL11.GL_ARRAY_BUFFER, model.getVBOidVertex() );
+			gl11.glVertexPointer( 3, GL10.GL_FLOAT, 0, 0 );
+		}
+		else
+		{
+			// 頂点配列の指定
+			gl.glVertexPointer( 3, GL10.GL_FLOAT, 0, model.getVertexBuffer() );
+		}
 
 		// 面の描画
 		if( m_bRenderFace
@@ -98,10 +124,23 @@ public class ModelViewerRenderer extends OpenGLPickRenderer
 			if( ERenderMode.RM_PICK_ELEMENTID == eRenderMode )
 			{
 				gl.glEnableClientState( GL10.GL_COLOR_ARRAY );
-				gl.glColorPointer( 4, // Must be 4.
-								   GL10.GL_UNSIGNED_BYTE,
-								   0,
-								   getTriangleIdColorBuffer() );
+				if( 0 != getVBOidTriangleIdColor() )
+				{ // Use VBO
+					// 色配列の指定
+					gl11.glBindBuffer( GL11.GL_ARRAY_BUFFER, getVBOidTriangleIdColor() );
+					gl11.glColorPointer( 4, // Must be 4.
+										 GL10.GL_UNSIGNED_BYTE,
+										 0,
+										 0 );
+				}
+				else
+				{
+					// 色配列の指定
+					gl.glColorPointer( 4, // Must be 4.
+									   GL10.GL_UNSIGNED_BYTE,
+									   0,
+									   getTriangleIdColorBuffer() );
+				}
 			}
 			else if( ERenderMode.RM_PICK_ELEMENTTYPE == eRenderMode )
 			{
@@ -111,10 +150,21 @@ public class ModelViewerRenderer extends OpenGLPickRenderer
 			{
 				gl.glColor4f( 0.5f, 0.5f, 0.0f, 1.0f );
 			}
-			gl.glDrawElements( GL10.GL_TRIANGLES,
-							   model.getTriangleVertexIndexBuffer().capacity(),
-							   GL10.GL_UNSIGNED_SHORT,
-							   model.getTriangleVertexIndexBuffer().position( 0 ) );
+			if( 0 != model.getVBOidTriangleVertexIndex() )
+			{ // Use VBO
+				gl11.glBindBuffer( GL11.GL_ELEMENT_ARRAY_BUFFER, model.getVBOidTriangleVertexIndex() );
+				gl11.glDrawElements( GL10.GL_TRIANGLES,
+									 model.getTriangleVertexIndexBuffer().capacity(),
+									 GL10.GL_UNSIGNED_SHORT,
+									 0 );
+			}
+			else
+			{
+				gl.glDrawElements( GL10.GL_TRIANGLES,
+								   model.getTriangleVertexIndexBuffer().capacity(),
+								   GL10.GL_UNSIGNED_SHORT,
+								   model.getTriangleVertexIndexBuffer().position( 0 ) );
+			}
 			gl.glDisableClientState( GL10.GL_COLOR_ARRAY );
 			// ピック面の描画
 			if( ERenderMode.RM_RENDER == eRenderMode )
@@ -123,10 +173,21 @@ public class ModelViewerRenderer extends OpenGLPickRenderer
 				{
 					int iIndexTriangle = m_aiName[2];
 					gl.glColor4f( 1.0f, 1.0f, 0.0f, 1.0f );
-					gl.glDrawElements( GL10.GL_TRIANGLES,
-									   3,
-									   GL10.GL_UNSIGNED_SHORT,
-									   model.getTriangleVertexIndexBuffer().position( 3 * iIndexTriangle ) );
+					if( 0 != model.getVBOidTriangleVertexIndex() )
+					{ // Use VBO
+						gl11.glBindBuffer( GL11.GL_ELEMENT_ARRAY_BUFFER, model.getVBOidTriangleVertexIndex() );
+						gl11.glDrawElements( GL10.GL_TRIANGLES,
+											 3,
+											 GL10.GL_UNSIGNED_SHORT,
+											 3 * iIndexTriangle * SIZEOF_SHORT );
+					}
+					else
+					{
+						gl.glDrawElements( GL10.GL_TRIANGLES,
+										   3,
+										   GL10.GL_UNSIGNED_SHORT,
+										   model.getTriangleVertexIndexBuffer().position( 3 * iIndexTriangle ) );
+					}
 				}
 			}
 		}
@@ -143,6 +204,10 @@ public class ModelViewerRenderer extends OpenGLPickRenderer
 				int    i3;
 				int    iIndexEdge;
 				byte[] abtRGB         = { 0, 0, 0 };
+				if( 0 != model.getVBOidEdgeVertexIndex() )
+				{ // Use VBO
+					gl11.glBindBuffer( GL11.GL_ELEMENT_ARRAY_BUFFER, model.getVBOidEdgeVertexIndex() );
+				}
 				for( iIndexTriangle = 0; iIndexTriangle < iCountTriangle; ++iIndexTriangle )
 				{
 					for( i3 = 0; i3 < 3; ++i3 )
@@ -150,10 +215,20 @@ public class ModelViewerRenderer extends OpenGLPickRenderer
 						iIndexEdge = iIndexTriangle * 3 + i3;
 						index2rgb( iIndexEdge, abtRGB );
 						gl11.glColor4ub( abtRGB[0], abtRGB[1], abtRGB[2], (byte)255 );
-						gl.glDrawElements( GL10.GL_LINES,
-										   2,
-										   GL10.GL_UNSIGNED_SHORT,
-										   model.getEdgeVertexIndexBuffer().position( 2 * iIndexEdge ) );
+						if( 0 != model.getVBOidEdgeVertexIndex() )
+						{ // Use VBO
+							gl11.glDrawElements( GL10.GL_LINES,
+												 2,
+												 GL10.GL_UNSIGNED_SHORT,
+												 2 * iIndexEdge * SIZEOF_SHORT );
+						}
+						else
+						{
+							gl.glDrawElements( GL10.GL_LINES,
+											   2,
+											   GL10.GL_UNSIGNED_SHORT,
+											   model.getEdgeVertexIndexBuffer().position( 2 * iIndexEdge ) );
+						}
 					}
 				}
 			}
@@ -167,10 +242,21 @@ public class ModelViewerRenderer extends OpenGLPickRenderer
 				{
 					gl.glColor4f( 0.0f, 0.5f, 0.5f, 1.0f );
 				}
-				gl.glDrawElements( GL10.GL_LINES,
-								   model.getEdgeVertexIndexBuffer().capacity(),
-								   GL10.GL_UNSIGNED_SHORT,
-								   model.getEdgeVertexIndexBuffer().position( 0 ) );
+				if( 0 != model.getVBOidEdgeVertexIndex() )
+				{ // Use VBO
+					gl11.glBindBuffer( GL11.GL_ELEMENT_ARRAY_BUFFER, model.getVBOidEdgeVertexIndex() );
+					gl11.glDrawElements( GL10.GL_LINES,
+										 model.getEdgeVertexIndexBuffer().capacity(),
+										 GL10.GL_UNSIGNED_SHORT,
+										 0 );
+				}
+				else
+				{
+					gl.glDrawElements( GL10.GL_LINES,
+									   model.getEdgeVertexIndexBuffer().capacity(),
+									   GL10.GL_UNSIGNED_SHORT,
+									   model.getEdgeVertexIndexBuffer().position( 0 ) );
+				}
 			}
 			// ピック線の描画
 			if( ERenderMode.RM_RENDER == eRenderMode )
@@ -180,10 +266,21 @@ public class ModelViewerRenderer extends OpenGLPickRenderer
 					int iIndexEdge = m_aiName[2];
 					gl.glLineWidth( 5.0f );
 					gl.glColor4f( 0.0f, 1.0f, 1.0f, 1.0f );
-					gl.glDrawElements( GL10.GL_LINES,
-									   2,
-									   GL10.GL_UNSIGNED_SHORT,
-									   model.getEdgeVertexIndexBuffer().position( 2 * iIndexEdge ) );
+					if( 0 != model.getVBOidEdgeVertexIndex() )
+					{ // Use VBO
+						gl11.glBindBuffer( GL11.GL_ELEMENT_ARRAY_BUFFER, model.getVBOidEdgeVertexIndex() );
+						gl11.glDrawElements( GL10.GL_LINES,
+											 2,
+											 GL10.GL_UNSIGNED_SHORT,
+											 2 * iIndexEdge * SIZEOF_SHORT );
+					}
+					else
+					{
+						gl.glDrawElements( GL10.GL_LINES,
+										   2,
+										   GL10.GL_UNSIGNED_SHORT,
+										   model.getEdgeVertexIndexBuffer().position( 2 * iIndexEdge ) );
+					}
 				}
 			}
 		}
@@ -196,10 +293,23 @@ public class ModelViewerRenderer extends OpenGLPickRenderer
 			if( ERenderMode.RM_PICK_ELEMENTID == eRenderMode )
 			{
 				gl.glEnableClientState( GL10.GL_COLOR_ARRAY );
-				gl.glColorPointer( 4, // Must be 4.
-								   GL10.GL_UNSIGNED_BYTE,
-								   0,
-								   getVertexIdColorBuffer() );
+				if( 0 != getVBOidVertexIdColor() )
+				{ // Use VBO
+					// 色配列の指定
+					gl11.glBindBuffer( GL11.GL_ARRAY_BUFFER, getVBOidVertexIdColor() );
+					gl11.glColorPointer( 4, // Must be 4.
+										 GL10.GL_UNSIGNED_BYTE,
+										 0,
+										 0 );
+				}
+				else
+				{
+					// 色配列の指定
+					gl.glColorPointer( 4, // Must be 4.
+									   GL10.GL_UNSIGNED_BYTE,
+									   0,
+									   getVertexIdColorBuffer() );
+				}
 			}
 			else if( ERenderMode.RM_PICK_ELEMENTTYPE == eRenderMode )
 			{
@@ -222,6 +332,13 @@ public class ModelViewerRenderer extends OpenGLPickRenderer
 					gl.glDrawArrays( GL10.GL_POINTS, iIndexPoint, 1 );
 				}
 			}
+		}
+
+		if( 0 != model.getVBOidVertex() )
+		{ // Use VBO
+			// バインドの解除
+			gl11.glBindBuffer( GL11.GL_ARRAY_BUFFER, 0 );
+			gl11.glBindBuffer( GL11.GL_ELEMENT_ARRAY_BUFFER, 0 );
 		}
 
 		// 頂点配列の無効化
@@ -466,6 +583,7 @@ public class ModelViewerRenderer extends OpenGLPickRenderer
 	@Override
 	public void preSurfaceDestroy()
 	{
+		destroyVBO();
 		destroyMessageTexture();
 
 		super.preSurfaceDestroy();
@@ -477,5 +595,79 @@ public class ModelViewerRenderer extends OpenGLPickRenderer
 		super.onSurfaceCreated( gl, config );
 
 		createMessageTexture();
+		createVBO();
+	}
+
+	@Override
+	public void setModel( Model model )
+	{
+		// VBOの破棄処理
+		destroyVBO();
+
+		super.setModel( model );
+
+		// VBOの構築処理
+		createVBO();
+	}
+
+	public void createVBO()
+	{
+		destroyVBO();
+
+		if( !( getGL() instanceof GL11 ) )
+		{
+			return;
+		}
+		GL11 gl11 = (GL11)getGL();
+
+		// モデルに関するVBO
+		if( null != getModel() )
+		{
+			getModel().createVBO( getGL() );
+		}
+
+		// ピック処理用の要素番号色に関するVBO
+		if( null != getModel() )
+		{    // ピック処理用の要素番号色は、モデルと連動しているので、モデルがない場合は、VBO作成スキップ
+			// VBO ID 配列の生成
+			gl11.glGenBuffers( m_aiVBOidIdColor.length, m_aiVBOidIdColor, 0 );
+			// データの転送
+			if( 0 != m_aiVBOidIdColor[0] )
+			{
+				// 頂点番号色データの転送
+				gl11.glBindBuffer( GL11.GL_ARRAY_BUFFER, getVBOidVertexIdColor() );
+				gl11.glBufferData( GL11.GL_ARRAY_BUFFER, getVertexIdColorBuffer().capacity() * SIZEOF_BYTE, getVertexIdColorBuffer(), GL11.GL_STATIC_DRAW );
+
+				// 三角形番号色データの転送
+				gl11.glBindBuffer( GL11.GL_ARRAY_BUFFER, getVBOidTriangleIdColor() );
+				gl11.glBufferData( GL11.GL_ARRAY_BUFFER, getTriangleIdColorBuffer().capacity() * SIZEOF_BYTE, getTriangleIdColorBuffer(), GL11.GL_STATIC_DRAW );
+
+				// バインドの解除
+				gl11.glBindBuffer( GL11.GL_ARRAY_BUFFER, 0 );
+			}
+		}
+	}
+
+	public void destroyVBO()
+	{
+		if( !( getGL() instanceof GL11 ) )
+		{
+			return;
+		}
+		GL11 gl11 = (GL11)getGL();
+
+		// ピック処理用の要素番号色に関するVBO
+		if( 0 != m_aiVBOidIdColor[0] )
+		{
+			gl11.glDeleteBuffers( m_aiVBOidIdColor.length, m_aiVBOidIdColor, 0 );
+			Arrays.fill( m_aiVBOidIdColor, 0 );
+		}
+
+		// モデルに関するVBO
+		if( null != getModel() )
+		{
+			getModel().destroyVBO( getGL() );
+		}
 	}
 }
+

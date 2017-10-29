@@ -17,13 +17,22 @@ package com.hiramine.modelviewertutorial;
 
 import java.nio.FloatBuffer;
 import java.nio.ShortBuffer;
+import java.util.Arrays;
+
+import javax.microedition.khronos.opengles.GL10;
+import javax.microedition.khronos.opengles.GL11;
 
 public class Model
 {
+	// 定数
+	private static final int SIZEOF_FLOAT = Float.SIZE / 8;    // Float.SIZEで、float型のビット数が得られるので、8で割って、バイト数を得る
+	private static final int SIZEOF_SHORT = Short.SIZE / 8;    // Short.SIZEで、short型のビット数が得られるので、8で割って、バイト数を得る
+
 	// メンバー変数
 	private FloatBuffer m_fbVertex;                // 頂点の座標値の配列（３つの座標値で１頂点）
 	private ShortBuffer m_sbTriangleVertexIndex;    // 三角形の頂点の番号の配列（３つの頂点番号で１三角形）（unsigned shortの上限は65535）
 	private ShortBuffer m_sbEdgeVertexIndex;        // 稜線の番号配列（２つの頂点番号で１稜線）（unsigned shortの上限は65535）
+	private int[] m_aiVBOid = new int[3];        // VBO ID
 
 	// コンストラクタ
 	public Model( float[] af3Vertex )
@@ -87,5 +96,71 @@ public class Model
 	public int getEdgeCount()
 	{
 		return getTriangleCount() * 3;
+	}
+
+	public int getVBOidVertex()
+	{
+		return m_aiVBOid[0];
+	}
+
+	public int getVBOidTriangleVertexIndex()
+	{
+		return m_aiVBOid[1];
+	}
+
+	public int getVBOidEdgeVertexIndex()
+	{
+		return m_aiVBOid[2];
+	}
+
+	public void createVBO( GL10 gl )
+	{
+		destroyVBO( gl );
+
+		if( !( gl instanceof GL11 ) )
+		{
+			return;
+		}
+		GL11 gl11 = (GL11)gl;
+
+		// VBO ID 配列の生成
+		gl11.glGenBuffers( m_aiVBOid.length, m_aiVBOid, 0 );
+
+		// データの転送
+		if( 0 != m_aiVBOid[0] )
+		{
+			// Vertexデータの転送
+			gl11.glBindBuffer( GL11.GL_ARRAY_BUFFER, getVBOidVertex() );
+			gl11.glBufferData( GL11.GL_ARRAY_BUFFER, m_fbVertex.capacity() * SIZEOF_FLOAT, m_fbVertex, GL11.GL_STATIC_DRAW );
+
+			// TriangleVertexIndexデータの転送
+			gl11.glBindBuffer( GL11.GL_ELEMENT_ARRAY_BUFFER, getVBOidTriangleVertexIndex() );
+			gl11.glBufferData( GL11.GL_ELEMENT_ARRAY_BUFFER, m_sbTriangleVertexIndex.capacity() * SIZEOF_SHORT, m_sbTriangleVertexIndex, GL11.GL_STATIC_DRAW );
+
+			// EdgeVertexIndexデータの転送
+			gl11.glBindBuffer( GL11.GL_ELEMENT_ARRAY_BUFFER, getVBOidEdgeVertexIndex() );
+			gl11.glBufferData( GL11.GL_ELEMENT_ARRAY_BUFFER, m_sbEdgeVertexIndex.capacity() * SIZEOF_SHORT, m_sbEdgeVertexIndex, GL11.GL_STATIC_DRAW );
+
+			// バインドの解除
+			gl11.glBindBuffer( GL11.GL_ARRAY_BUFFER, 0 );
+			gl11.glBindBuffer( GL11.GL_ELEMENT_ARRAY_BUFFER, 0 );
+		}
+	}
+
+	public void destroyVBO( GL10 gl )
+	{
+		if( 0 == m_aiVBOid[0] )
+		{
+			return;
+		}
+
+		if( !( gl instanceof GL11 ) )
+		{
+			return;
+		}
+		GL11 gl11 = (GL11)gl;
+
+		gl11.glDeleteBuffers( m_aiVBOid.length, m_aiVBOid, 0 );
+		Arrays.fill( m_aiVBOid, 0 );
 	}
 }
