@@ -48,6 +48,10 @@ public class ModelViewerRenderer extends OpenGLLightRenderer
 	private FloatBuffer m_fbVertexMessageTexture;
 	private FloatBuffer m_fbTextureMessageTexture;
 	private int[] m_aiVBOidIdColor = new int[2];        // VBO ID
+	private FloatBuffer m_fbAmbient;
+	private FloatBuffer m_fbDiffuse;
+	private FloatBuffer m_fbSpecular;
+	private float       m_fShininess;
 
 	// コンストラクタ
 	public ModelViewerRenderer()
@@ -71,6 +75,15 @@ public class ModelViewerRenderer extends OpenGLLightRenderer
 		float[] f4TextureCoord = { 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f };
 		m_fbVertexMessageTexture = makeFloatBuffer( f4Vertex );
 		m_fbTextureMessageTexture = makeFloatBuffer( f4TextureCoord );
+
+		// マテリアル設定
+		float[] f4Ambient = { 0.25f, 0.20725f, 0.20725f, 1.0f };
+		m_fbAmbient = OpenGLBaseRenderer.makeFloatBuffer( f4Ambient );
+		float[] f4Diffuse = { 1.0f, 0.829f, 0.829f, 1.0f };
+		m_fbDiffuse = OpenGLBaseRenderer.makeFloatBuffer( f4Diffuse );
+		float[] f4Specular = { 0.296648f, 0.296648f, 0.296648f, 1.0f };
+		m_fbSpecular = OpenGLBaseRenderer.makeFloatBuffer( f4Specular );
+		m_fShininess = 0.088f;
 	}
 
 	// アクセサ
@@ -163,8 +176,12 @@ public class ModelViewerRenderer extends OpenGLLightRenderer
 				gl.glEnable( GL10.GL_LIGHTING ); // 光源の効果を有効にする。
 				gl.glEnable( GL10.GL_NORMALIZE ); // OpenGL側で法線ベクトルを単位法線ベクトル化するようにする
 				gl.glLightModelx( GL10.GL_LIGHT_MODEL_TWO_SIDE, 1 );// 面の表と裏に光があたるようにする
-				gl.glEnable( GL10.GL_COLOR_MATERIAL );// 色設定をマテリアル設定として使用するようにする
-				gl.glColor4f( 0.5f, 0.5f, 0.0f, 1.0f );
+				//gl.glEnable( GL10.GL_COLOR_MATERIAL );// 色設定をマテリアル設定として使用するようにする
+				//gl.glColor4f( 0.5f, 0.5f, 0.0f, 1.0f );
+				gl.glMaterialfv( GL10.GL_FRONT_AND_BACK, GL10.GL_AMBIENT, m_fbAmbient );
+				gl.glMaterialfv( GL10.GL_FRONT_AND_BACK, GL10.GL_DIFFUSE, m_fbDiffuse );
+				gl.glMaterialfv( GL10.GL_FRONT_AND_BACK, GL10.GL_SPECULAR, m_fbSpecular );
+				gl.glMaterialf( GL10.GL_FRONT_AND_BACK, GL10.GL_SHININESS, m_fShininess );
 			}
 			if( 0 != model.getVBOidTriangleVertexIndex() )
 			{ // Use VBO
