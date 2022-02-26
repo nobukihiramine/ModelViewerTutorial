@@ -15,7 +15,7 @@ http://www.hiramine.com/programming/modelviewerandroidstudio233/index.html
 Nobuki HIRAMINE : http://www.hiramine.com
 
 ## License : ライセンス
-Copyright 2022 Nobuki HIRAMINE  
+Copyright 2017 Nobuki HIRAMINE  
 The source code is licensed under the Apache License, Version 2.0.  
 See the [LICENSE](LICENSE) file for more details.  
 (本アプリケーションのソースコードのライセンスは、「Apache License, Version 2.0」です。  
